@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextcloud
+  labels:
+    app: nextcloud
+spec:
+  ports: 
+  - port: 80
+  selector:
+    app: nextcloud
+    tier: frontend
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: nextcloud
+  labels: 
+    frontend: web
+    backend: db
+spec:
+  selector:
+    matchLabels:
+      app: nextcloud
+      tier: frontend
+  strategy:
+    type: Recreate
+    
+  template:
+    metadata:
+      labels:
+        app: nextcloud
+        tier: frontend
+    spec:
+      containers:
+      - image: nextcloud:17.0.7-apache
+        name: nextcloud
+        env: 
+        - name: NEXTCLOUD_DB_HOST
+          value: nextcloud-mysql
+        - name: NEXTCLOUD_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-pass
+              key: password
+        ports:
+        - containerPort: 80
+          name: nextcloud
+        volumeMounts: 
+        - name: nextcloud-persistent-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: nextcloud-persistent-storage
+        persistentVolumeClaim:
+          claimName: efs-nextcloud
+            
